@@ -22,12 +22,31 @@
         /* 左侧面板 - SSH 管理 */
         .sidebar {
             width: 340px;
+            min-width: 280px;
+            max-width: 50vw;
             background: #16213e;
             padding: 20px;
             display: flex;
             flex-direction: column;
-            border-right: 1px solid #0f3460;
             overflow-y: auto;
+            position: relative;
+        }
+
+        /* 拖拽调整大小的手柄 */
+        .sidebar-resizer {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 4px;
+            height: 100%;
+            background: #0f3460;
+            cursor: col-resize;
+            transition: background 0.2s;
+        }
+
+        .sidebar-resizer:hover,
+        .sidebar-resizer.dragging {
+            background: #e94560;
         }
 
         .sidebar h2 {
@@ -83,8 +102,11 @@
         .btn-primary {
             background: #e94560;
             color: white;
-            width: 100%;
             padding: 10px 16px;
+        }
+
+        .btn-full-width {
+            width: 100%;
         }
 
         .btn-primary:hover {
@@ -149,10 +171,22 @@
             border-radius: 8px;
             margin-bottom: 10px;
             border-left: 3px solid #666;
+            border-right: 3px solid transparent;
+            cursor: default;
+            transition: all 0.2s;
         }
 
         .server-item.connected {
             border-left-color: #27ae60;
+            cursor: pointer;
+        }
+
+        .server-item.connected:hover {
+            background: #1f2544;
+        }
+
+        .server-item.selected {
+            border-right-color: #27ae60;
         }
 
         .server-item .server-header {
@@ -176,6 +210,18 @@
 
         .server-item.connected .server-status {
             background: #27ae60;
+        }
+
+        .server-item .server-selected-tag {
+            display: none;
+            font-size: 10px;
+            color: #27ae60;
+            text-align: right;
+            margin-top: 2px;
+        }
+
+        .server-item.selected .server-selected-tag {
+            display: block;
         }
 
         .server-item .server-addr {
@@ -213,29 +259,84 @@
             margin-bottom: 10px;
         }
 
-        .manual-exec textarea {
-            width: 100%;
-            padding: 8px 12px;
+        .exec-history {
+            flex: 1;
+            min-height: 100px;
+            max-height: 300px;
+            overflow-y: auto;
+            background: #0d0d1a;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+
+        .exec-history-item {
+            padding: 8px 10px;
+            border-bottom: 1px solid #1a1a2e;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .exec-history-item:last-child {
+            border-bottom: none;
+        }
+
+        .exec-history-item .exec-cmd {
+            color: #e94560;
+            margin-bottom: 4px;
+        }
+
+        .exec-history-item .exec-cmd::before {
+            content: '$ ';
+            color: #27ae60;
+        }
+
+        .exec-history-item .exec-output {
+            color: #aaa;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .exec-history-item .exec-error {
+            color: #e74c3c;
+        }
+
+        .exec-history-empty {
+            color: #666;
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+        }
+
+        .exec-input-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .exec-input-row textarea {
+            flex: 1;
+            padding: 8px 10px;
             border: 1px solid #0f3460;
             border-radius: 6px;
             background: #1a1a2e;
             color: #eee;
-            font-size: 14px;
-            resize: vertical;
-            min-height: 60px;
+            font-size: 13px;
             font-family: monospace;
+            resize: none;
+            min-height: 36px;
+            max-height: 80px;
+            line-height: 1.4;
         }
 
-        .exec-result {
-            margin-top: 10px;
-            padding: 10px;
-            background: #0d0d1a;
-            border-radius: 6px;
-            font-family: monospace;
+        .exec-input-row textarea:focus {
+            outline: none;
+            border-color: #e94560;
+        }
+
+        .btn-exec {
+            padding: 8px 12px;
             font-size: 12px;
-            white-space: pre-wrap;
-            max-height: 150px;
-            overflow-y: auto;
+            align-self: flex-end;
         }
 
         /* 右侧面板 - Claude 对话 */
@@ -312,19 +413,30 @@
             gap: 10px;
         }
 
-        .chat-input-container input {
+        .chat-input-container textarea {
             flex: 1;
-            padding: 12px 16px;
+            padding: 10px 14px;
             border: 1px solid #0f3460;
             border-radius: 8px;
             background: #1a1a2e;
             color: #eee;
             font-size: 14px;
+            resize: none;
+            min-height: 40px;
+            max-height: 120px;
+            font-family: inherit;
+            line-height: 1.4;
         }
 
-        .chat-input-container input:focus {
+        .chat-input-container textarea:focus {
             outline: none;
             border-color: #e94560;
+        }
+
+        .btn-send {
+            padding: 8px 12px;
+            font-size: 12px;
+            align-self: flex-end;
         }
 
         .loading {
@@ -382,7 +494,8 @@
 </head>
 <body>
     <!-- 左侧 SSH 管理面板 -->
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-resizer" id="sidebarResizer"></div>
         <h2>SSH 连接管理</h2>
 
         <!-- 添加连接表单 -->
@@ -412,7 +525,7 @@
                         <label>密码</label>
                         <input type="password" id="password" required>
                     </div>
-                    <button type="submit" class="btn btn-primary">添加并连接</button>
+                    <button type="submit" class="btn btn-primary btn-full-width">添加并连接</button>
                 </form>
             </div>
         </div>
@@ -428,12 +541,13 @@
         <!-- 手动执行命令 -->
         <div class="manual-exec">
             <h3>手动执行命令</h3>
-            <select id="execHostSelect">
-                <option value="">选择已连接的服务器...</option>
-            </select>
-            <textarea id="execCommand" placeholder="输入命令，如: ls -la"></textarea>
-            <button class="btn btn-primary" style="margin-top: 10px;" onclick="manualExec()">执行</button>
-            <div id="execResult" class="exec-result" style="display: none;"></div>
+            <div id="execHistory" class="exec-history">
+                <div class="exec-history-empty">执行结果将显示在这里</div>
+            </div>
+            <div class="exec-input-row">
+                <textarea id="execCommand" placeholder="ls" rows="1"></textarea>
+                <button class="btn btn-primary btn-exec" onclick="manualExec()">执行</button>
+            </div>
         </div>
     </div>
 
@@ -452,9 +566,9 @@
         </div>
 
         <div class="chat-input-container">
-            <input type="text" id="chatInput" placeholder="输入消息，让 Claude 帮你操作服务器..."
-                   onkeypress="if(event.key==='Enter') sendMessage()">
-            <button class="btn btn-primary" onclick="sendMessage()">发送</button>
+            <textarea id="chatInput" placeholder="输入消息，让 Claude 帮你操作服务器... (Enter 发送，Shift+Enter 换行)"
+                      rows="1"></textarea>
+            <button class="btn btn-primary btn-send" onclick="sendMessage()">发送</button>
         </div>
     </div>
 
@@ -466,41 +580,72 @@
             content.classList.toggle('collapsed');
         }
 
+        // 当前选中的服务器
+        let selectedServerId = null;
+
+        // 命令历史
+        let commandHistory = [];
+        let historyIndex = -1;
+        let currentInput = '';
+
+        // 选择服务器
+        function selectServer(hostId) {
+            selectedServerId = hostId;
+            // 更新 UI 选中状态
+            document.querySelectorAll('.server-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            const selectedItem = document.querySelector(`.server-item[data-id="${hostId}"]`);
+            if (selectedItem) {
+                selectedItem.classList.add('selected');
+            }
+        }
+
         // 刷新服务器列表
         async function refreshServers() {
             const res = await fetch('/api/ssh/list');
             const data = await res.json();
             const list = document.getElementById('serversList');
-            const select = document.getElementById('execHostSelect');
 
             if (!data.servers || data.servers.length === 0) {
                 list.innerHTML = '<div style="color: #888; font-size: 13px;">暂无保存的服务器</div>';
-                select.innerHTML = '<option value="">选择已连接的服务器...</option>';
+                selectedServerId = null;
                 return;
+            }
+
+            // 检查当前选中的服务器是否仍然有效（已连接）
+            const connectedServers = data.servers.filter(s => s.connected);
+            if (selectedServerId && !connectedServers.find(s => s.id === selectedServerId)) {
+                selectedServerId = null;
+            }
+
+            // 如果没有选中的服务器，且只有一个已连接的，自动选中
+            if (!selectedServerId && connectedServers.length === 1) {
+                selectedServerId = connectedServers[0].id;
             }
 
             // 渲染服务器列表
             list.innerHTML = data.servers.map(server => `
-                <div class="server-item ${server.connected ? 'connected' : ''}">
+                <div class="server-item ${server.connected ? 'connected' : ''} ${server.id === selectedServerId ? 'selected' : ''}"
+                     data-id="${server.id}"
+                     onclick="${server.connected ? `selectServer('${server.id}')` : ''}">
                     <div class="server-header">
                         <span class="server-id">${server.id}</span>
-                        <span class="server-status">${server.connected ? '已连接' : '未连接'}</span>
+                        <div>
+                            <span class="server-status">${server.connected ? '已连接' : '未连接'}</span>
+                            <div class="server-selected-tag">当前选中</div>
+                        </div>
                     </div>
                     <div class="server-addr">${server.username}@${server.host}:${server.port}</div>
                     <div class="server-actions">
                         ${server.connected
-                            ? `<button class="btn btn-warning btn-sm" onclick="disconnectServer('${server.id}')">断开</button>`
-                            : `<button class="btn btn-success btn-sm" onclick="connectServer('${server.id}')">连接</button>`
+                            ? `<button class="btn btn-warning btn-sm" onclick="event.stopPropagation(); disconnectServer('${server.id}')">断开</button>`
+                            : `<button class="btn btn-success btn-sm" onclick="event.stopPropagation(); connectServer('${server.id}')">连接</button>`
                         }
-                        <button class="btn btn-danger btn-sm" onclick="deleteServer('${server.id}')">删除</button>
+                        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteServer('${server.id}')">删除</button>
                     </div>
                 </div>
             `).join('');
-
-            // 更新下拉框（只显示已连接的）
-            const connectedServers = data.servers.filter(s => s.connected);
-            select.innerHTML = '<option value="">选择已连接的服务器...</option>' +
-                connectedServers.map(s => `<option value="${s.id}">${s.id}</option>`).join('');
         }
 
         // 添加新服务器
@@ -525,9 +670,12 @@
 
                 const data = await res.json();
                 if (res.ok) {
+                    const newHostId = document.getElementById('hostId').value;
                     alert(data.message);
                     e.target.reset();
                     document.getElementById('port').value = '22';
+                    // 自动选中新连接的服务器
+                    selectedServerId = newHostId;
                     refreshServers();
                 } else {
                     alert('连接失败: ' + data.detail);
@@ -546,6 +694,8 @@
                 const res = await fetch(`/api/ssh/connect/${hostId}`, { method: 'POST' });
                 const data = await res.json();
                 if (res.ok) {
+                    // 自动选中新连接的服务器
+                    selectedServerId = hostId;
                     refreshServers();
                 } else {
                     alert('连接失败: ' + data.detail);
@@ -581,41 +731,74 @@
 
         // 手动执行命令
         async function manualExec() {
-            const hostId = document.getElementById('execHostSelect').value;
-            const command = document.getElementById('execCommand').value;
-            const resultDiv = document.getElementById('execResult');
+            const input = document.getElementById('execCommand');
+            const command = input.value.trim();
+            const historyDiv = document.getElementById('execHistory');
 
-            if (!hostId) {
-                alert('请选择服务器');
+            if (!selectedServerId) {
+                alert('请先在上方服务器列表中选择一个已连接的服务器');
                 return;
             }
-            if (!command.trim()) {
+            if (!command) {
                 alert('请输入命令');
                 return;
             }
 
-            resultDiv.style.display = 'block';
-            resultDiv.textContent = '执行中...';
+            // 保存到命令历史
+            if (commandHistory[commandHistory.length - 1] !== command) {
+                commandHistory.push(command);
+            }
+            historyIndex = commandHistory.length;
+            currentInput = '';
+
+            // 清除输入框
+            input.value = '';
+            input.style.height = 'auto';
+
+            // 清除空状态提示
+            const emptyState = historyDiv.querySelector('.exec-history-empty');
+            if (emptyState) emptyState.remove();
+
+            // 添加执行中的条目
+            const itemId = 'exec-' + Date.now();
+            historyDiv.innerHTML += `
+                <div class="exec-history-item" id="${itemId}">
+                    <div class="exec-cmd">${escapeHtml(command)}</div>
+                    <div class="exec-output">执行中...</div>
+                </div>
+            `;
+            historyDiv.scrollTop = historyDiv.scrollHeight;
 
             try {
                 const res = await fetch('/api/ssh/exec', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ host_id: hostId, command: command })
+                    body: JSON.stringify({ host_id: selectedServerId, command: command })
                 });
 
                 const data = await res.json();
+                const itemEl = document.getElementById(itemId);
+                const outputEl = itemEl.querySelector('.exec-output');
+
                 if (res.ok) {
-                    let output = `Exit Code: ${data.result.exit_code}\n`;
+                    let output = `[Exit: ${data.result.exit_code}]`;
                     if (data.result.stdout) output += `\n${data.result.stdout}`;
-                    if (data.result.stderr) output += `\nSTDERR:\n${data.result.stderr}`;
-                    resultDiv.textContent = output;
+                    if (data.result.stderr) {
+                        outputEl.innerHTML = `<span>[Exit: ${data.result.exit_code}]</span>` +
+                            (data.result.stdout ? `\n${escapeHtml(data.result.stdout)}` : '') +
+                            `<span class="exec-error">\n${escapeHtml(data.result.stderr)}</span>`;
+                    } else {
+                        outputEl.textContent = output;
+                    }
                 } else {
-                    resultDiv.textContent = '错误: ' + data.detail;
+                    outputEl.innerHTML = `<span class="exec-error">错误: ${escapeHtml(data.detail)}</span>`;
                 }
             } catch (err) {
-                resultDiv.textContent = '错误: ' + err.message;
+                const itemEl = document.getElementById(itemId);
+                itemEl.querySelector('.exec-output').innerHTML = `<span class="exec-error">错误: ${escapeHtml(err.message)}</span>`;
             }
+
+            historyDiv.scrollTop = historyDiv.scrollHeight;
         }
 
         // 发送 Claude 消息
@@ -625,6 +808,7 @@
             if (!message) return;
 
             input.value = '';
+            input.style.height = 'auto'; // 重置高度
             const container = document.getElementById('chatContainer');
 
             // 清除空状态
@@ -648,10 +832,16 @@
             container.scrollTop = container.scrollHeight;
 
             try {
+                // 如果有选中的服务器，自动添加上下文
+                let fullMessage = message;
+                if (selectedServerId) {
+                    fullMessage = `[当前选中的服务器: ${selectedServerId}] ${message}`;
+                }
+
                 const res = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: message })
+                    body: JSON.stringify({ message: fullMessage })
                 });
 
                 const data = await res.json();
@@ -685,6 +875,93 @@
                 .replace(/`([^`]+)`/g, '<code style="background:#0d0d1a;padding:2px 6px;border-radius:4px;">$1</code>')
                 .replace(/\n/g, '<br>');
         }
+
+        // Claude 对话输入框键盘事件处理
+        document.getElementById('chatInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+            // Shift+Enter 默认行为就是换行，不需要额外处理
+        });
+
+        // 自动调整 Claude 对话 textarea 高度
+        document.getElementById('chatInput').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        // 手动命令输入框键盘事件处理
+        document.getElementById('execCommand').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                manualExec();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (commandHistory.length > 0) {
+                    if (historyIndex === commandHistory.length) {
+                        currentInput = this.value;
+                    }
+                    if (historyIndex > 0) {
+                        historyIndex--;
+                        this.value = commandHistory[historyIndex];
+                    }
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    this.value = commandHistory[historyIndex];
+                } else if (historyIndex === commandHistory.length - 1) {
+                    historyIndex = commandHistory.length;
+                    this.value = currentInput;
+                }
+            }
+            // Shift+Enter 默认行为就是换行，不需要额外处理
+        });
+
+        // 自动调整手动命令 textarea 高度
+        document.getElementById('execCommand').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 80) + 'px';
+        });
+
+        // 侧边栏拖拽调整大小
+        (function() {
+            const sidebar = document.getElementById('sidebar');
+            const resizer = document.getElementById('sidebarResizer');
+            let isResizing = false;
+
+            resizer.addEventListener('mousedown', (e) => {
+                isResizing = true;
+                resizer.classList.add('dragging');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isResizing) return;
+
+                const minWidth = 280;
+                const maxWidth = window.innerWidth / 2;
+                let newWidth = e.clientX;
+
+                if (newWidth < minWidth) newWidth = minWidth;
+                if (newWidth > maxWidth) newWidth = maxWidth;
+
+                sidebar.style.width = newWidth + 'px';
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isResizing) {
+                    isResizing = false;
+                    resizer.classList.remove('dragging');
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                }
+            });
+        })();
 
         // 初始化
         refreshServers();
