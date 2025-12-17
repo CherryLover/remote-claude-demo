@@ -9,8 +9,10 @@ from claude_agent_sdk import (
     ClaudeSDKClient,
     ClaudeAgentOptions,
     AssistantMessage,
+    UserMessage,
     TextBlock,
     ToolUseBlock,
+    ToolResultBlock,
     ResultMessage,
 )
 
@@ -102,22 +104,75 @@ class ClaudeSessionClient:
                 await self._client.query(message)
 
                 async for msg in self._client.receive_response():
+                    # 调试日志：打印消息类型
+                    msg_type = type(msg).__name__
+                    print(f"[SDK] Message: {msg_type}")
+
                     if isinstance(msg, AssistantMessage):
                         for block in msg.content:
+                            block_type = type(block).__name__
+                            print(f"  [SDK] Block: {block_type}")
+
                             if isinstance(block, TextBlock):
+                                print(f"    [SDK] TextBlock: {block.text[:100]}{'...' if len(block.text) > 100 else ''}")
                                 result_queue.put({"type": "content", "data": block.text})
                             elif isinstance(block, ToolUseBlock):
+                                print(f"    [SDK] ToolUseBlock: name={block.name}, id={block.id}")
                                 result_queue.put(
                                     {
                                         "type": "tool_use",
-                                        "data": {"tool": block.name, "input": block.input},
+                                        "data": {
+                                            "tool": block.name,
+                                            "tool_use_id": block.id,
+                                            "input": block.input,
+                                        },
                                     }
                                 )
+                            else:
+                                print(f"    [SDK] Unknown block: {block_type}, attrs={[a for a in dir(block) if not a.startswith('_')]}")
+
+                    elif isinstance(msg, UserMessage):
+                        for block in msg.content:
+                            block_type = type(block).__name__
+                            print(f"  [SDK] Block: {block_type}")
+
+                            if isinstance(block, ToolResultBlock):
+                                print(f"    [SDK] ToolResultBlock: tool_use_id={block.tool_use_id}, is_error={getattr(block, 'is_error', False)}")
+                                # 提取工具结果内容
+                                content = ""
+                                if isinstance(block.content, str):
+                                    content = block.content
+                                elif isinstance(block.content, list):
+                                    for item in block.content:
+                                        # item 可能是 dict 或对象
+                                        if isinstance(item, dict):
+                                            content += item.get("text", "")
+                                        elif hasattr(item, "text"):
+                                            content += item.text
+                                        elif isinstance(item, str):
+                                            content += item
+
+                                result_queue.put(
+                                    {
+                                        "type": "tool_result",
+                                        "data": {
+                                            "tool_use_id": block.tool_use_id,
+                                            "content": content,
+                                            "is_error": getattr(block, "is_error", False),
+                                        },
+                                    }
+                                )
+                            else:
+                                print(f"    [SDK] Unknown block: {block_type}, attrs={[a for a in dir(block) if not a.startswith('_')]}")
+
                     elif isinstance(msg, ResultMessage):
+                        print(f"  [SDK] ResultMessage: completed")
                         result_queue.put(
                             {"type": "done", "data": {"status": "completed"}}
                         )
                         break
+                    else:
+                        print(f"  [SDK] Unknown message: {msg_type}, attrs={[a for a in dir(msg) if not a.startswith('_')]}")
 
             except Exception as e:
                 result_queue.put({"type": "error", "data": {"message": str(e)}})

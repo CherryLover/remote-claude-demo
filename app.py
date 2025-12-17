@@ -3,6 +3,7 @@
 Remote Claude Service - 使用 Claude Agent SDK 的独立 Web 服务
 """
 
+import json
 import logging
 from typing import Optional
 from contextlib import asynccontextmanager
@@ -10,7 +11,7 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from ssh.manager import ssh_manager
 from claude import ClaudeSessionClient
@@ -125,7 +126,7 @@ async def api_ssh_exec(req: SSHExecRequest):
 
 @app.post("/api/chat")
 async def api_chat(req: ChatRequest):
-    """使用 Claude Agent SDK 处理对话"""
+    """使用 Claude Agent SDK 处理对话（非流式，保留用于兼容）"""
     logger.info(f"[Chat] 收到消息: {req.message[:80]}{'...' if len(req.message) > 80 else ''}")
     try:
         response_text = ""
@@ -146,6 +147,64 @@ async def api_chat(req: ChatRequest):
     except Exception as e:
         logger.error(f"[Chat] 错误: {e}")
         raise HTTPException(status_code=500, detail=f"Claude SDK 错误: {str(e)}")
+
+
+@app.post("/api/chat/stream")
+async def api_chat_stream(req: ChatRequest):
+    """使用 SSE 流式返回 Claude 响应"""
+    logger.info(f"[Chat/Stream] 收到消息: {req.message[:80]}{'...' if len(req.message) > 80 else ''}")
+
+    async def event_generator():
+        try:
+            async for event in claude_client.query(req.message):
+                event_type = event["type"]
+
+                if event_type == "content":
+                    data = json.dumps({"text": event["data"]}, ensure_ascii=False)
+                    yield f"event: content\ndata: {data}\n\n"
+
+                elif event_type == "tool_use":
+                    tool_data = event.get("data", {})
+                    logger.info(f"[Chat/Stream] Claude 使用工具: {tool_data.get('tool', 'unknown')}")
+                    data = json.dumps({
+                        "tool_use_id": tool_data.get("tool_use_id"),
+                        "name": tool_data.get("tool"),
+                        "input": tool_data.get("input")
+                    }, ensure_ascii=False)
+                    yield f"event: tool_use\ndata: {data}\n\n"
+
+                elif event_type == "tool_result":
+                    result_data = event.get("data", {})
+                    data = json.dumps({
+                        "tool_use_id": result_data.get("tool_use_id"),
+                        "content": result_data.get("content", ""),
+                        "is_error": result_data.get("is_error", False),
+                    }, ensure_ascii=False)
+                    yield f"event: tool_result\ndata: {data}\n\n"
+
+                elif event_type == "done":
+                    yield f"event: done\ndata: {json.dumps({'status': 'completed'})}\n\n"
+
+                elif event_type == "error":
+                    data = json.dumps({"message": event["data"]["message"]}, ensure_ascii=False)
+                    yield f"event: error\ndata: {data}\n\n"
+
+            logger.info("[Chat/Stream] 响应完成")
+
+        except Exception as e:
+            logger.error(f"[Chat/Stream] 错误: {e}")
+            data = json.dumps({"message": str(e)}, ensure_ascii=False)
+            yield f"event: error\ndata: {data}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
 
 
 # ============ 启动入口 ============
