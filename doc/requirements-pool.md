@@ -3,6 +3,7 @@
 | ID | 需求名称 | 描述 | 相关文档 | 状态 | 优先级 |
 |----|---------|------|---------|------|--------|
 | REQ-001 | 桌面应用打包 | 将 Web 应用打包为桌面端应用，使用 PyWebView 方案 | [desktop-app-solution.md](./desktop-app-solution.md) | 待开发 | P2 |
+| REQ-002 | 流式对话响应 | 使用 SSE 实现 Claude 对话的流式返回，提升用户体验 | [streaming-chat-solution.md](./streaming-chat-solution.md) | 已完成 | P1 |
 
 ## 状态说明
 
