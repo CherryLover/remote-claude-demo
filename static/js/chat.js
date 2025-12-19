@@ -119,6 +119,32 @@ function renderMessageWithTools(text, tools, isComplete = false) {
     return html;
 }
 
+// ============== 系统消息 ==============
+
+/**
+ * 显示系统提示条
+ */
+function showSystemBanner(text) {
+    const container = document.getElementById('chatContainer');
+    if (!container) return;
+
+    // 移除旧的 banner（如果有）
+    const oldBanner = container.querySelector('.system-banner');
+    if (oldBanner) oldBanner.remove();
+
+    // 移除空状态（如果有）
+    const emptyState = container.querySelector('.empty-state');
+    if (emptyState) emptyState.remove();
+
+    // 创建新 banner
+    const banner = document.createElement('div');
+    banner.className = 'system-banner';
+    banner.textContent = text;
+
+    // 插入到聊天区最前面
+    container.insertBefore(banner, container.firstChild);
+}
+
 // ============== 对话功能 ==============
 
 /**
@@ -261,6 +287,12 @@ async function sendMessage() {
                         }
                         contentEl.innerHTML = renderMessageWithTools(fullText, tools, false);
                         container.scrollTop = container.scrollHeight;
+                    } else if (eventType === 'system_init') {
+                        // 获取当前选中的服务器
+                        const selectedServer = getSelectedServerId() || '未选择';
+                        // 提取模型名称（取前两段，如 claude-sonnet）
+                        const modelName = data.model ? data.model.split('-').slice(0, 2).join('-') : 'unknown';
+                        showSystemBanner(`🤖 会话已初始化 · 模型: ${modelName} · 当前服务器: ${selectedServer}`);
                     } else if (eventType === 'error') {
                         contentEl.innerHTML = `<span style="color: #e74c3c;">错误: ${escapeHtml(data.message)}</span>`;
                     } else if (eventType === 'done') {

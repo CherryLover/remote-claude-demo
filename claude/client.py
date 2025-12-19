@@ -139,7 +139,20 @@ class ClaudeSessionClient:
                                     }
                                 )
                             else:
-                                print(f"    [SDK] Unknown block: {block_type}, attrs={[a for a in dir(block) if not a.startswith('_')]}")
+                                # 增强日志：打印未知 block 的详细内容
+                                print(f"    [SDK] Unknown block in AssistantMessage: {block_type}")
+                                attrs = [a for a in dir(block) if not a.startswith('_')]
+                                print(f"      attrs: {attrs}")
+                                for attr in attrs:
+                                    try:
+                                        value = getattr(block, attr)
+                                        if not callable(value):
+                                            value_str = str(value)
+                                            if len(value_str) > 300:
+                                                value_str = value_str[:300] + "...(truncated)"
+                                            print(f"      {attr}: {value_str}")
+                                    except Exception as e:
+                                        print(f"      {attr}: <error reading: {e}>")
 
                     elif isinstance(msg, UserMessage):
                         for block in msg.content:
@@ -173,7 +186,20 @@ class ClaudeSessionClient:
                                     }
                                 )
                             else:
-                                print(f"    [SDK] Unknown block: {block_type}, attrs={[a for a in dir(block) if not a.startswith('_')]}")
+                                # 增强日志：打印未知 block 的详细内容
+                                print(f"    [SDK] Unknown block in UserMessage: {block_type}")
+                                attrs = [a for a in dir(block) if not a.startswith('_')]
+                                print(f"      attrs: {attrs}")
+                                for attr in attrs:
+                                    try:
+                                        value = getattr(block, attr)
+                                        if not callable(value):
+                                            value_str = str(value)
+                                            if len(value_str) > 300:
+                                                value_str = value_str[:300] + "...(truncated)"
+                                            print(f"      {attr}: {value_str}")
+                                    except Exception as e:
+                                        print(f"      {attr}: <error reading: {e}>")
 
                     elif isinstance(msg, ResultMessage):
                         print(f"  [SDK] ResultMessage: completed")
@@ -182,7 +208,36 @@ class ClaudeSessionClient:
                         )
                         break
                     else:
-                        print(f"  [SDK] Unknown message: {msg_type}, attrs={[a for a in dir(msg) if not a.startswith('_')]}")
+                        # 处理 SystemMessage (init) - 推送到前端
+                        if msg_type == "SystemMessage":
+                            data = getattr(msg, 'data', {})
+                            if isinstance(data, dict) and data.get('subtype') == 'init':
+                                print(f"  [SDK] SystemMessage (init): model={data.get('model', 'unknown')}")
+                                result_queue.put({
+                                    "type": "system_init",
+                                    "data": {
+                                        "model": data.get('model', 'unknown'),
+                                        "mcp_servers": data.get('mcp_servers', [])
+                                    }
+                                })
+                            else:
+                                # 其他 subtype 的 SystemMessage，只打印日志
+                                print(f"  [SDK] SystemMessage (subtype={data.get('subtype', 'unknown')})")
+                        else:
+                            # 其他未知消息类型，打印详细日志
+                            print(f"  [SDK] Unknown message: {msg_type}")
+                            attrs = [a for a in dir(msg) if not a.startswith('_')]
+                            print(f"    attrs: {attrs}")
+                            for attr in attrs:
+                                try:
+                                    value = getattr(msg, attr)
+                                    if not callable(value):
+                                        value_str = str(value)
+                                        if len(value_str) > 500:
+                                            value_str = value_str[:500] + "...(truncated)"
+                                        print(f"    {attr}: {value_str}")
+                                except Exception as e:
+                                    print(f"    {attr}: <error reading: {e}>")
 
             except Exception as e:
                 result_queue.put({"type": "error", "data": {"message": str(e)}})

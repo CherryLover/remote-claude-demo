@@ -525,6 +525,18 @@ body {
     font-size: 14px;
 }
 
+/* 系统提示条 */
+.system-banner {
+    background: linear-gradient(135deg, #1a2a3a 0%, #162030 100%);
+    border: 1px solid #2a4a6a;
+    border-radius: 8px;
+    padding: 8px 16px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: #8ab4d8;
+    text-align: center;
+}
+
 /* 折叠面板 */
 .collapsible {
     cursor: pointer;

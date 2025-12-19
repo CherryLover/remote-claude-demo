@@ -180,6 +180,12 @@ async def api_chat_stream(req: ChatRequest):
                     }, ensure_ascii=False)
                     yield f"event: tool_result\ndata: {data}\n\n"
 
+                elif event_type == "system_init":
+                    init_data = event.get("data", {})
+                    logger.info(f"[Chat/Stream] 会话初始化: model={init_data.get('model', 'unknown')}")
+                    data = json.dumps(init_data, ensure_ascii=False)
+                    yield f"event: system_init\ndata: {data}\n\n"
+
                 elif event_type == "done":
                     yield f"event: done\ndata: {json.dumps({'status': 'completed'})}\n\n"
 
