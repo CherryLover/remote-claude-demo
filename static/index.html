@@ -63,6 +63,33 @@
                 <button class="btn btn-primary btn-exec" onclick="manualExec()">执行</button>
             </div>
         </div>
+
+        <!-- Claude 配置 -->
+        <div class="config-section">
+            <h3 class="collapsible collapsed" id="configHeader" onclick="toggleConfigPanel()">Claude 配置</h3>
+            <div class="config-panel collapsed" id="configPanel">
+                <div class="config-form" style="margin-top: 10px;">
+                    <div class="form-group">
+                        <label>API Key</label>
+                        <input type="password" id="configApiKey" placeholder="sk-ant-...">
+                    </div>
+                    <div class="form-group">
+                        <label>Base URL (可选)</label>
+                        <input type="text" id="configBaseUrl" placeholder="https://api.anthropic.com">
+                    </div>
+                </div>
+                <div class="config-actions">
+                    <button class="btn btn-primary btn-sm" onclick="saveConfig()">保存</button>
+                    <button class="btn btn-danger btn-sm" id="configClearBtn" onclick="clearConfig()">清除</button>
+                </div>
+                <div class="config-sources">
+                    <div class="config-sources-title">配置来源（优先级从高到低）</div>
+                    <div id="configSources">
+                        <!-- 由 JS 动态渲染 -->
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- 右侧 Claude 对话面板 -->
@@ -90,6 +117,7 @@
     <script src="/static/js/utils.js"></script>
     <script src="/static/js/ssh.js"></script>
     <script src="/static/js/chat.js"></script>
+    <script src="/static/js/config.js"></script>
     <script src="/static/js/main.js"></script>
 </body>
 </html>

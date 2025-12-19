@@ -34,6 +34,9 @@ env/
 # SSH configs (contains sensitive passwords)
 ssh_configs.json
 
+# Claude config (contains API key)
+claude_config.json
+
 # IDE
 .idea/
 .vscode/

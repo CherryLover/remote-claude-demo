@@ -8,16 +8,14 @@ import logging
 from typing import Optional
 from contextlib import asynccontextmanager
 
-from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
 
 from ssh.manager import ssh_manager
 from claude import ClaudeSessionClient
-from models import SSHConnectRequest, SSHExecRequest, ChatRequest
-
-load_dotenv()
+from config import claude_config_manager
+from models import SSHConnectRequest, SSHExecRequest, ChatRequest, ClaudeConfigRequest
 
 # 配置日志
 logging.basicConfig(
@@ -205,6 +203,52 @@ async def api_chat_stream(req: ChatRequest):
             "X-Accel-Buffering": "no",
         }
     )
+
+
+# --- Claude Config API ---
+
+
+@app.get("/api/claude/config")
+async def api_get_claude_config():
+    """获取 Claude 配置（脱敏）"""
+    return claude_config_manager.get_masked_config()
+
+
+@app.post("/api/claude/config")
+async def api_set_claude_config(req: ClaudeConfigRequest):
+    """设置 Claude 配置"""
+    global claude_client
+
+    logger.info("[Config] 更新 Claude 配置")
+    claude_config_manager.set_config(
+        api_key=req.api_key,
+        base_url=req.base_url
+    )
+
+    # 关闭当前会话，下次对话时会自动重建
+    if claude_client:
+        await claude_client.close()
+        claude_client = ClaudeSessionClient()
+        logger.info("[Config] Claude 客户端已重建")
+
+    return {"status": "ok", "message": "配置已保存并生效"}
+
+
+@app.delete("/api/claude/config")
+async def api_clear_claude_config():
+    """清除 Claude Web 配置"""
+    global claude_client
+
+    logger.info("[Config] 清除 Claude Web 配置")
+    claude_config_manager.clear_config()
+
+    # 重建客户端以使用新的配置源
+    if claude_client:
+        await claude_client.close()
+        claude_client = ClaudeSessionClient()
+        logger.info("[Config] Claude 客户端已重建")
+
+    return {"status": "ok", "message": "配置已清除"}
 
 
 # ============ 启动入口 ============

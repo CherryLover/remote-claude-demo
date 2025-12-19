@@ -23,13 +23,26 @@ python app.py
 ```
 app.py                 # FastAPI 入口，定义所有 API 路由
 models.py              # Pydantic 请求模型
+config/
+  claude_config.py     # ClaudeConfigManager - Claude 配置管理（三级优先级）
 claude/
   client.py            # ClaudeSessionClient - Claude SDK 封装
 ssh/
   manager.py           # SSHConnectionManager - SSH 连接管理
   tools.py             # MCP 工具定义 (ssh_exec, ssh_list)
 static/
-  index.html           # Web UI
+  index.html           # Web UI 入口
+  css/
+    styles.css         # 全局样式
+  js/
+    utils.js           # 通用工具函数
+    ssh.js             # SSH 服务器管理
+    chat.js            # Claude 对话
+    config.js          # Claude 配置管理
+    main.js            # 入口和初始化
+doc/
+  requirements-pool.md # 需求池
+  *.md                 # 技术方案文档
 ```
 
 ### 核心设计
@@ -47,8 +60,27 @@ static/
 - `DELETE /api/ssh/config/{host_id}` - 删除配置
 - `GET /api/ssh/list` - 列出所有服务器
 - `POST /api/ssh/exec` - 执行命令
-- `POST /api/chat` - Claude 对话
+- `POST /api/chat` - Claude 对话（普通）
+- `POST /api/chat/stream` - Claude 对话（SSE 流式）
+- `GET /api/claude/config` - 获取 Claude 配置（脱敏）
+- `POST /api/claude/config` - 设置 Claude 配置
+- `DELETE /api/claude/config` - 清除 Web 配置
 
 ### 数据持久化
 
 SSH 服务器配置保存在 `ssh_configs.json`，包含 host、username、password、port。
+
+Claude 配置保存在 `claude_config.json`，支持三级优先级：Web 配置 > 项目 .env > 系统环境变量。
+
+## 开发流程
+
+功能开发遵循以下流程：
+
+1. **创建需求** - 在 `doc/requirements-pool.md` 中新增需求条目
+2. **讨论细节** - 与用户确认需求范围、技术方案、优先级等
+3. **写文档** - 在 `doc/` 下创建技术方案文档（如 `xxx-solution.md`）
+4. **确认文档** - 用户审阅并确认方案
+5. **写代码** - 按文档实现功能
+6. **用户验收** - 用户测试验证功能
+7. **更新文档** - 根据实际实现更新 CLAUDE.md 和方案文档
+8. **更新需求池** - 将需求状态改为"已完成"

@@ -48,6 +48,7 @@ function initApp() {
     // 初始化各模块事件
     initSSHEvents();
     initChatEvents();
+    initConfigEvents();
     initSidebarResizer();
 
     // 加载服务器列表

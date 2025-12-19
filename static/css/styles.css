@@ -626,3 +626,134 @@ body {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
 }
+
+/* ============== 配置面板样式 ============== */
+
+.config-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #0f3460;
+}
+
+.config-section h3 {
+    font-size: 14px;
+    color: #888;
+    margin-bottom: 10px;
+}
+
+.config-panel {
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.config-panel.collapsed {
+    max-height: 0 !important;
+}
+
+.config-form {
+    margin-bottom: 15px;
+}
+
+.config-form .form-group {
+    margin-bottom: 10px;
+}
+
+.config-form .form-group label {
+    display: block;
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 4px;
+}
+
+.config-form .form-group input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #0f3460;
+    border-radius: 6px;
+    background: #1a1a2e;
+    color: #eee;
+    font-size: 13px;
+    font-family: monospace;
+}
+
+.config-form .form-group input:focus {
+    outline: none;
+    border-color: #e94560;
+}
+
+.config-form .form-group input::placeholder {
+    color: #555;
+}
+
+.config-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.config-actions .btn {
+    flex: 1;
+}
+
+/* 配置来源列表 */
+.config-sources {
+    background: #0d0d1a;
+    border-radius: 6px;
+    padding: 10px;
+}
+
+.config-sources-title {
+    font-size: 11px;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.config-source {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 12px;
+    border-bottom: 1px solid #1a1a2e;
+}
+
+.config-source:last-child {
+    border-bottom: none;
+}
+
+.config-source-icon {
+    color: #666;
+    font-size: 10px;
+}
+
+.config-source.active .config-source-icon {
+    color: #27ae60;
+}
+
+.config-source.available .config-source-icon {
+    color: #888;
+}
+
+.config-source-label {
+    color: #888;
+    min-width: 90px;
+}
+
+.config-source-value {
+    color: #aaa;
+    font-family: monospace;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.config-source.empty .config-source-value {
+    color: #555;
+}
+
+.config-source-status {
+    color: #27ae60;
+    font-size: 10px;
+    white-space: nowrap;
+}

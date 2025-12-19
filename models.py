@@ -1,5 +1,6 @@
 """Pydantic 请求/响应模型"""
 
+from typing import Optional
 from pydantic import BaseModel
 
 
@@ -18,3 +19,8 @@ class SSHExecRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
+
+
+class ClaudeConfigRequest(BaseModel):
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None

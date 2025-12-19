@@ -17,6 +17,7 @@ from claude_agent_sdk import (
 )
 
 from ssh import ssh_mcp_server
+from config import claude_config_manager
 
 
 class ClaudeSessionClient:
@@ -47,7 +48,16 @@ class ClaudeSessionClient:
 
 请帮助用户安全、高效地管理他们的远程服务器。用中文回复。"""
 
+        # 从配置管理器获取配置
+        config = claude_config_manager.get_config()
+
+        # 构建环境变量
+        env = {"ANTHROPIC_API_KEY": config.api_key}
+        if config.base_url:
+            env["ANTHROPIC_BASE_URL"] = config.base_url
+
         return ClaudeAgentOptions(
+            env=env,
             mcp_servers={"ssh-tools": ssh_mcp_server},
             allowed_tools=[
                 "mcp__ssh-tools__ssh_exec",
