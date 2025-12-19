@@ -72,6 +72,12 @@ SSH 服务器配置保存在 `ssh_configs.json`，包含 host、username、passw
 
 Claude 配置保存在 `claude_config.json`，支持三级优先级：Web 配置 > 项目 .env > 系统环境变量。
 
+### 前端对话体验
+
+- 聊天区提供“停止”按钮，通过 `AbortController` 中断流式响应，并提示“响应已被手动停止”。
+- 用户与助手消息统一使用 `formatResponse` + `marked` 进行 Markdown 渲染；支持代码块、列表、标题等。
+- 消息气泡由 `flex` 布局 + `inline-block` 控制宽度，短文本可自适应收缩，最长不超过 `min(620px, 72vw)`。
+
 ## 开发流程
 
 功能开发遵循以下流程：

@@ -367,11 +367,16 @@ body {
 
 .message {
     margin-bottom: 16px;
-    max-width: 80%;
+    display: flex;
+    width: 100%;
 }
 
 .message.user {
-    margin-left: auto;
+    justify-content: flex-end;
+}
+
+.message.assistant {
+    justify-content: flex-start;
 }
 
 .message-content {
@@ -379,6 +384,29 @@ body {
     border-radius: 12px;
     font-size: 14px;
     line-height: 1.5;
+    max-width: min(620px, 72vw);
+    display: inline-block;
+    word-break: break-word;
+}
+
+.message-content p {
+    margin-bottom: 8px;
+}
+
+.message-content ul,
+.message-content ol {
+    margin: 8px 0;
+    padding-left: 20px;
+}
+
+.message-content h1,
+.message-content h2,
+.message-content h3,
+.message-content h4,
+.message-content h5,
+.message-content h6 {
+    margin: 12px 0 8px;
+    color: #e94560;
 }
 
 .message.user .message-content {
@@ -401,12 +429,30 @@ body {
     font-size: 12px;
 }
 
+.message-content code {
+    background: #0d0d1a;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.message-content pre code {
+    background: transparent;
+    padding: 0;
+}
+
+.message-note {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #f1c40f;
+}
+
 .chat-input-container {
     padding: 20px;
     background: #16213e;
     border-top: 1px solid #0f3460;
     display: flex;
     gap: 10px;
+    align-items: flex-end;
 }
 
 .chat-input-container textarea {
@@ -433,6 +479,23 @@ body {
     padding: 8px 12px;
     font-size: 12px;
     align-self: flex-end;
+}
+
+.btn-stop {
+    background: #444;
+    color: #eee;
+    padding: 8px 12px;
+    font-size: 12px;
+    align-self: flex-end;
+    cursor: not-allowed;
+    opacity: 0.6;
+    transition: all 0.2s ease;
+}
+
+.btn-stop:not(:disabled) {
+    background: #c0392b;
+    opacity: 1;
+    cursor: pointer;
 }
 
 /* 加载动画 */

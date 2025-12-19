@@ -109,11 +109,13 @@
         <div class="chat-input-container">
             <textarea id="chatInput" placeholder="输入消息，让 Claude 帮你操作服务器... (Enter 发送，Shift+Enter 换行)"
                       rows="1"></textarea>
+            <button class="btn btn-danger btn-stop" id="stopButton" onclick="stopStreaming()" disabled>停止</button>
             <button class="btn btn-primary btn-send" onclick="sendMessage()">发送</button>
         </div>
     </div>
 
     <!-- JS 模块（按依赖顺序加载） -->
+    <script src="/static/js/lib/marked.min.js"></script>
     <script src="/static/js/utils.js"></script>
     <script src="/static/js/ssh.js"></script>
     <script src="/static/js/chat.js"></script>

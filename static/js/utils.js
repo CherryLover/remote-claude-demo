@@ -11,6 +11,15 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// 统一设置 Markdown 渲染选项
+if (window.marked) {
+    window.marked.setOptions({
+        breaks: true,
+        mangle: false,
+        headerIds: false
+    });
+}
+
 /**
  * 折叠/展开功能
  */
@@ -31,15 +40,22 @@ function formatResponse(text) {
         return `__TOOL_REF_${toolRefs.length - 1}__`;
     });
 
-    // 转义 HTML 并格式化
-    let html = escapeHtml(protectedText)
-        .replace(/```([\s\S]*?)```/g, '<pre>$1</pre>')
-        .replace(/`([^`]+)`/g, '<code style="background:#0d0d1a;padding:2px 6px;border-radius:4px;">$1</code>')
-        .replace(/\n/g, '<br>');
+    const sanitized = escapeHtml(protectedText);
+    let html;
+
+    if (window.marked && window.marked.parse) {
+        html = window.marked.parse(sanitized);
+    } else {
+        // 兜底处理，至少支持基础格式
+        html = sanitized
+            .replace(/```([\s\S]*?)```/g, '<pre>$1</pre>')
+            .replace(/`([^`]+)`/g, '<code style="background:#0d0d1a;padding:2px 6px;border-radius:4px;">$1</code>')
+            .replace(/\n/g, '<br>');
+    }
 
     // 恢复 tool-ref 标签
     html = html.replace(/__TOOL_REF_(\d+)__/g, (_, idx) => {
-        return `<span class="tool-ref">${toolRefs[parseInt(idx)]}</span>`;
+        return `<span class="tool-ref">${toolRefs[parseInt(idx, 10)]}</span>`;
     });
 
     return html;

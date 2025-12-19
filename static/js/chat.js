@@ -4,6 +4,8 @@
 
 // 流式响应状态
 let isStreaming = false;
+let currentStreamController = null;
+let manualStopRequested = false;
 
 // ============== 工具渲染相关 ==============
 
@@ -125,15 +127,35 @@ function renderMessageWithTools(text, tools, isComplete = false) {
 function setInputDisabled(disabled) {
     const input = document.getElementById('chatInput');
     const sendBtn = document.querySelector('.btn-send');
+    const stopBtn = document.getElementById('stopButton');
     input.disabled = disabled;
     sendBtn.disabled = disabled;
     if (disabled) {
         input.placeholder = 'Claude 正在响应中...';
         sendBtn.style.opacity = '0.5';
+        if (stopBtn) {
+            stopBtn.disabled = false;
+        }
     } else {
         input.placeholder = '输入消息，让 Claude 帮你操作服务器... (Enter 发送，Shift+Enter 换行)';
         sendBtn.style.opacity = '1';
+        if (stopBtn) {
+            stopBtn.disabled = true;
+        }
     }
+}
+
+/**
+ * 手动停止当前响应
+ */
+function stopStreaming() {
+    if (!isStreaming || !currentStreamController) return;
+    manualStopRequested = true;
+    const stopBtn = document.getElementById('stopButton');
+    if (stopBtn) {
+        stopBtn.disabled = true;
+    }
+    currentStreamController.abort();
 }
 
 /**
@@ -147,6 +169,7 @@ async function sendMessage() {
     if (!message) return;
 
     isStreaming = true;
+    manualStopRequested = false;
     setInputDisabled(true);
 
     input.value = '';
@@ -156,9 +179,10 @@ async function sendMessage() {
     const emptyState = container.querySelector('.empty-state');
     if (emptyState) emptyState.remove();
 
+    const userHtml = formatResponse(message);
     container.innerHTML += `
         <div class="message user">
-            <div class="message-content">${escapeHtml(message)}</div>
+            <div class="message-content">${userHtml}</div>
         </div>
     `;
 
@@ -181,10 +205,13 @@ async function sendMessage() {
             fullMessage = `[当前选中的服务器: ${serverId}] ${message}`;
         }
 
+        currentStreamController = new AbortController();
+
         const response = await fetch('/api/chat/stream', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: fullMessage })
+            body: JSON.stringify({ message: fullMessage }),
+            signal: currentStreamController.signal
         });
 
         if (!response.ok) {
@@ -250,8 +277,16 @@ async function sendMessage() {
         }
 
     } catch (err) {
-        contentEl.innerHTML = `<span style="color: #e74c3c;">错误: ${escapeHtml(err.message)}</span>`;
+        if (err.name === 'AbortError') {
+            const note = manualStopRequested ? '响应已被手动停止' : '响应意外中断';
+            const baseHtml = fullText ? renderMessageWithTools(fullText, tools, false) : '';
+            contentEl.innerHTML = `${baseHtml}<div class="message-note">${escapeHtml(note)}</div>`;
+        } else {
+            contentEl.innerHTML = `<span style="color: #e74c3c;">错误: ${escapeHtml(err.message)}</span>`;
+        }
     } finally {
+        currentStreamController = null;
+        manualStopRequested = false;
         isStreaming = false;
         setInputDisabled(false);
     }
