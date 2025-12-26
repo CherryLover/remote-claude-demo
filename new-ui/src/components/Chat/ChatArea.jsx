@@ -3,13 +3,14 @@ import MessageItem from './MessageItem';
 import ChatInput from './ChatInput';
 import { api } from '../../utils/api';
 
-const ChatArea = ({ selectedServerId, refreshServers }) => {
+const ChatArea = ({ selectedServerId, refreshServers, servers = [] }) => {
     const [messages, setMessages] = useState([]);
     const [isStreaming, setIsStreaming] = useState(false);
     const [systemBanner, setSystemBanner] = useState('');
     const [controller, setController] = useState(null);
     const chatContainerRef = useRef(null);
-    const messagesEndRef = useRef(null);
+
+    const hasServers = servers.length > 0;
 
     // Scroll to bottom on new messages
     useEffect(() => {
@@ -23,14 +24,10 @@ const ChatArea = ({ selectedServerId, refreshServers }) => {
             controller.abort();
             setController(null);
             setIsStreaming(false);
-            // Add note to last message
             setMessages(prev => {
                 const newMessages = [...prev];
                 const lastMsg = newMessages[newMessages.length - 1];
                 if (lastMsg && lastMsg.role === 'assistant') {
-                    // We append note to content. But content is HTML sometimes? 
-                    // Let's add a separate flag or just modify content.
-                    // Implementation choice: append span
                     lastMsg.content += '<div class="message-note">响应已被手动停止</div>';
                 }
                 return newMessages;
@@ -41,11 +38,9 @@ const ChatArea = ({ selectedServerId, refreshServers }) => {
     const sendMessage = async (text) => {
         if (isStreaming) return;
 
-        // Add user message
         const userMsg = { id: Date.now(), role: 'user', content: text };
         setMessages(prev => [...prev, userMsg]);
 
-        // Add assistant placeholder
         const assistantId = Date.now() + 1;
         const assistantMsg = { id: assistantId, role: 'assistant', content: '', tools: [] };
         setMessages(prev => [...prev, assistantMsg]);
@@ -99,8 +94,7 @@ const ChatArea = ({ selectedServerId, refreshServers }) => {
                                 name: data.name,
                                 input: data.input
                             });
-                            // Add ref marker
-                            const toolIndex = currentTools.length; // 1-based
+                            const toolIndex = currentTools.length;
                             fullText += `<span class="tool-ref">${toolIndex}</span>`;
 
                             setMessages(prev => prev.map(m =>
@@ -135,7 +129,6 @@ const ChatArea = ({ selectedServerId, refreshServers }) => {
 
         } catch (err) {
             if (err.name === 'AbortError') {
-                // Handled in stopStreaming usually, but if aborted elsewhere
             } else {
                 setMessages(prev => prev.map(m =>
                     m.id === assistantId ? { ...m, content: fullText + `<div style="color: #e74c3c;">错误: ${err.message}</div>` } : m
@@ -149,34 +142,52 @@ const ChatArea = ({ selectedServerId, refreshServers }) => {
 
     return (
         <div className="main">
-            <div className="header">
-                <h1>Remote Claude Service</h1>
-                <p>使用 Claude 智能管理你的远程服务器</p>
-            </div>
-
             <div className="chat-container" id="chatContainer" ref={chatContainerRef}>
-                {systemBanner && <div className="system-banner">{systemBanner}</div>}
-                {messages.length === 0 && (
-                    <div className="empty-state">
-                        <p>先在左侧添加 SSH 服务器，然后在下方输入框与 Claude 对话</p>
-                        <p>例如: "帮我看看 my-server 的系统负载"</p>
+                {messages.length === 0 ? (
+                    <div className="welcome-screen">
+                        <div className="welcome-header">
+                            <h1>Remote Claude Service</h1>
+                            <p>使用 Claude 智能管理你的远程服务器</p>
+                        </div>
+                        <div className="welcome-guide">
+                            <div className={`guide-step ${hasServers ? 'completed' : ''}`}>
+                                <span className="step-num">{hasServers ? '✓' : '1'}</span>
+                                <div>
+                                    <h3>连接服务器</h3>
+                                    <p>{hasServers ? '已添加服务器，准备就绪。' : '在左侧列表选择或添加一个新的 SSH 服务器。'}</p>
+                                </div>
+                            </div>
+                            <div className="guide-step">
+                                <span className="step-num">2</span>
+                                <div>
+                                    <h3>开始对话</h3>
+                                    <p>在下方告诉 Claude 你想做什么，例如：</p>
+                                    <div className="example-prompt" onClick={() => sendMessage("查一下当前的系统负载情况")}>"查一下当前的系统负载情况"</div>
+                                    <div className="example-prompt" onClick={() => sendMessage("查一下当前的 docker 运行状态")}>"查一下当前的 docker 运行状态"</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+                ) : (
+                    <>
+                        {systemBanner && <div className="system-banner">{systemBanner}</div>}
+                        {messages.map((msg, index) => (
+                            <MessageItem
+                                key={msg.id}
+                                {...msg}
+                                isStreaming={isStreaming}
+                                isLast={index === messages.length - 1}
+                            />
+                        ))}
+                    </>
                 )}
-                {messages.map((msg, index) => (
-                    <MessageItem
-                        key={msg.id}
-                        {...msg}
-                        isStreaming={isStreaming}
-                        isLast={index === messages.length - 1}
-                    />
-                ))}
             </div>
 
             <ChatInput
                 onSend={sendMessage}
                 onStop={stopStreaming}
                 isStreaming={isStreaming}
-                disabled={isStreaming} // Original: input disabled while streaming
+                disabled={isStreaming}
             />
         </div>
     );

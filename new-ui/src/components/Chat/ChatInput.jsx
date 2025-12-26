@@ -5,8 +5,11 @@ const ChatInput = ({ onSend, onStop, isStreaming, disabled }) => {
 
     // Auto resize
     const handleInput = (e) => {
-        e.target.style.height = 'auto';
-        e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+        const target = e.target;
+        target.style.height = 'auto'; // Reset to calculate new height
+        // Min 40px, Max handled by CSS max-height
+        const newHeight = Math.max(40, target.scrollHeight);
+        target.style.height = `${newHeight}px`;
     };
 
     const handleKeyDown = (e) => {
@@ -16,7 +19,7 @@ const ChatInput = ({ onSend, onStop, isStreaming, disabled }) => {
             if (value && !isStreaming && !disabled) {
                 onSend(value);
                 e.target.value = '';
-                e.target.style.height = 'auto';
+                e.target.style.height = 'auto'; // Reset height
             }
         }
     };
