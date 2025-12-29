@@ -16,7 +16,8 @@ ssh_configs.json
 # Claude config (contains API key)
 claude_config.json
 
-# Electron
+# Electron build output
+release/
 out/
 *.asar
 
