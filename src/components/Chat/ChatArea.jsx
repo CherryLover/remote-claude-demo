@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import MessageItem from './MessageItem';
 import ChatInput from './ChatInput';
-import { api } from '../../utils/api';
+import { api, isElectron } from '../../utils/api';
 
 const ChatArea = ({ selectedServerId, refreshServers, servers = [] }) => {
     const [messages, setMessages] = useState([]);
@@ -20,7 +20,20 @@ const ChatArea = ({ selectedServerId, refreshServers, servers = [] }) => {
     }, [messages, isStreaming]);
 
     const stopStreaming = () => {
-        if (controller) {
+        if (isElectron()) {
+            // Electron: 使用 IPC 停止
+            api.chatStream().abort();
+            setIsStreaming(false);
+            setMessages(prev => {
+                const newMessages = [...prev];
+                const lastMsg = newMessages[newMessages.length - 1];
+                if (lastMsg && lastMsg.role === 'assistant') {
+                    lastMsg.content += '<div class="message-note">响应已被手动停止</div>';
+                }
+                return newMessages;
+            });
+        } else if (controller) {
+            // Web: 使用 AbortController
             controller.abort();
             setController(null);
             setIsStreaming(false);
@@ -46,18 +59,100 @@ const ChatArea = ({ selectedServerId, refreshServers, servers = [] }) => {
         setMessages(prev => [...prev, assistantMsg]);
 
         setIsStreaming(true);
-        const abortController = new AbortController();
-        setController(abortController);
 
         let fullText = '';
         let currentTools = [];
 
-        try {
-            let fullMessage = text;
-            if (selectedServerId) {
-                fullMessage = `[当前选中的服务器: ${selectedServerId}] ${text}`;
-            }
+        let fullMessage = text;
+        if (selectedServerId) {
+            fullMessage = `[当前选中的服务器: ${selectedServerId}] ${text}`;
+        }
 
+        if (isElectron()) {
+            // Electron 模式：使用 IPC 流式通信
+            await sendMessageElectron(fullMessage, assistantId, fullText, currentTools);
+        } else {
+            // Web 模式：使用 SSE
+            await sendMessageWeb(fullMessage, assistantId, fullText, currentTools);
+        }
+    };
+
+    // Electron 模式的消息发送
+    const sendMessageElectron = async (fullMessage, assistantId, fullText, currentTools) => {
+        try {
+            const streamHandler = api.chatStream(fullMessage);
+
+            await streamHandler.start((data) => {
+                switch (data.type) {
+                    case 'system':
+                        if (data.subtype === 'init') {
+                            const serverName = selectedServerId || '未选择';
+                            const modelName = data.model ? data.model.split('-').slice(0, 2).join('-') : 'unknown';
+                            setSystemBanner(`🤖 会话已初始化 · 模型: ${modelName} · 当前服务器: ${serverName}`);
+                        }
+                        break;
+
+                    case 'assistant':
+                        fullText += data.content;
+                        setMessages(prev => prev.map(m =>
+                            m.id === assistantId ? { ...m, content: fullText } : m
+                        ));
+                        break;
+
+                    case 'tool_call':
+                        currentTools.push({
+                            id: Date.now().toString(),
+                            name: data.toolName,
+                            input: data.input
+                        });
+                        const toolIndex = currentTools.length;
+                        fullText += `<span class="tool-ref">${toolIndex}</span>`;
+                        setMessages(prev => prev.map(m =>
+                            m.id === assistantId ? { ...m, content: fullText, tools: [...currentTools] } : m
+                        ));
+                        break;
+
+                    case 'tool_result':
+                        const idx = currentTools.findIndex(t => t.name === data.toolName);
+                        if (idx !== -1) {
+                            currentTools[idx] = {
+                                ...currentTools[idx],
+                                result: typeof data.result === 'string' ? data.result : JSON.stringify(data.result),
+                                isError: false
+                            };
+                            setMessages(prev => prev.map(m =>
+                                m.id === assistantId ? { ...m, tools: [...currentTools] } : m
+                            ));
+                        }
+                        break;
+
+                    case 'error':
+                        setMessages(prev => prev.map(m =>
+                            m.id === assistantId ? { ...m, content: fullText + `<span style="color: #e74c3c;">错误: ${data.error?.message || '未知错误'}</span>` } : m
+                        ));
+                        break;
+
+                    case 'done':
+                        refreshServers();
+                        break;
+                }
+            });
+
+        } catch (err) {
+            setMessages(prev => prev.map(m =>
+                m.id === assistantId ? { ...m, content: fullText + `<div style="color: #e74c3c;">错误: ${err.message}</div>` } : m
+            ));
+        } finally {
+            setIsStreaming(false);
+        }
+    };
+
+    // Web 模式的消息发送
+    const sendMessageWeb = async (fullMessage, assistantId, fullText, currentTools) => {
+        const abortController = new AbortController();
+        setController(abortController);
+
+        try {
             const response = await api.chatStream(fullMessage, abortController.signal);
 
             if (!response.ok) {
@@ -68,6 +163,7 @@ const ChatArea = ({ selectedServerId, refreshServers, servers = [] }) => {
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
+            let eventType = '';
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -79,7 +175,7 @@ const ChatArea = ({ selectedServerId, refreshServers, servers = [] }) => {
 
                 for (const line of lines) {
                     if (line.startsWith('event: ')) {
-                        var eventType = line.slice(7);
+                        eventType = line.slice(7);
                     } else if (line.startsWith('data: ')) {
                         const data = JSON.parse(line.slice(6));
 
@@ -128,8 +224,7 @@ const ChatArea = ({ selectedServerId, refreshServers, servers = [] }) => {
             }
 
         } catch (err) {
-            if (err.name === 'AbortError') {
-            } else {
+            if (err.name !== 'AbortError') {
                 setMessages(prev => prev.map(m =>
                     m.id === assistantId ? { ...m, content: fullText + `<div style="color: #e74c3c;">错误: ${err.message}</div>` } : m
                 ));

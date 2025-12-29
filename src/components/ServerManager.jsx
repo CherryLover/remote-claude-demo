@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { api } from '../utils/api';
+import { api, isElectron } from '../utils/api';
 import AddServerModal from './Settings/AddServerModal';
 
 const ServerManager = ({ servers, selectedServerId, onSelect, refreshServers }) => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [reconnectServer, setReconnectServer] = useState(null);
+    const [reconnectPassword, setReconnectPassword] = useState('');
 
     const handleConnect = async (e, serverId) => {
         e.stopPropagation();
@@ -12,8 +14,35 @@ const ServerManager = ({ servers, selectedServerId, onSelect, refreshServers }) 
             if (res.ok) {
                 await refreshServers();
                 onSelect(serverId);
+            } else if (res.needPassword) {
+                // Electron 模式：需要重新输入密码
+                const server = servers.find(s => s.id === serverId);
+                setReconnectServer(server);
+                setReconnectPassword('');
             } else {
-                alert('Connection failed: ' + res.detail);
+                alert('Connection failed: ' + (res.detail || res.error));
+            }
+        } catch (err) {
+            alert('Connection failed: ' + err.message);
+        }
+    };
+
+    const handleReconnect = async () => {
+        if (!reconnectServer || !reconnectPassword) return;
+        try {
+            const res = await api.addServer({
+                host: reconnectServer.host,
+                port: reconnectServer.port,
+                username: reconnectServer.username,
+                password: reconnectPassword
+            });
+            if (res.ok) {
+                await refreshServers();
+                onSelect(reconnectServer.id);
+                setReconnectServer(null);
+                setReconnectPassword('');
+            } else {
+                alert('Connection failed: ' + (res.error || res.detail));
             }
         } catch (err) {
             alert('Connection failed: ' + err.message);
@@ -90,6 +119,38 @@ const ServerManager = ({ servers, selectedServerId, onSelect, refreshServers }) 
                 onClose={() => setIsAddModalOpen(false)}
                 onAdded={refreshServers}
             />
+
+            {/* 重新连接密码输入弹窗 */}
+            {reconnectServer && (
+                <div className="modal-overlay" onClick={() => setReconnectServer(null)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>重新连接</h2>
+                            <button className="modal-close" onClick={() => setReconnectServer(null)}>×</button>
+                        </div>
+                        <div className="modal-body">
+                            <p style={{ marginBottom: '16px', color: '#888' }}>
+                                连接到 {reconnectServer.id}
+                            </p>
+                            <div className="form-group">
+                                <label>密码</label>
+                                <input
+                                    type="password"
+                                    value={reconnectPassword}
+                                    onChange={(e) => setReconnectPassword(e.target.value)}
+                                    onKeyPress={(e) => e.key === 'Enter' && handleReconnect()}
+                                    placeholder="输入 SSH 密码"
+                                    autoFocus
+                                />
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={() => setReconnectServer(null)}>取消</button>
+                            <button className="btn btn-primary" onClick={handleReconnect}>连接</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '../utils/api';
+import { api, isElectron } from '../utils/api';
 
 const ConfigPanel = () => {
     const [collapsed, setCollapsed] = useState(true);
@@ -30,18 +30,19 @@ const ConfigPanel = () => {
         }
 
         try {
-            const res = await api.saveConfig({
-                api_key: key || null,
-                base_url: url || null
-            });
+            const saveData = isElectron()
+                ? { apiKey: key || undefined, baseUrl: url || undefined }
+                : { api_key: key || null, base_url: url || null };
 
-            if (res.ok) {
-                alert(res.message);
+            const res = await api.saveConfig(saveData);
+
+            if (res.ok || res.success) {
+                alert(res.message || '配置已保存');
                 setApiKey('');
                 setBaseUrl('');
                 loadConfig();
             } else {
-                alert('保存失败: ' + (res.detail || '未知错误'));
+                alert('保存失败: ' + (res.detail || res.error || '未知错误'));
             }
         } catch (err) {
             alert('保存失败: ' + err.message);
@@ -49,20 +50,91 @@ const ConfigPanel = () => {
     };
 
     const handleClear = async () => {
-        if (!confirm('确定清除 Web 配置吗？将会使用下一优先级的配置源。')) return;
+        if (!confirm('确定清除配置吗？')) return;
         try {
             const res = await api.clearConfig();
-            if (res.ok) {
-                alert(res.message);
+            if (res.ok || res.success) {
+                alert(res.message || '配置已清除');
                 loadConfig();
             } else {
-                alert('清除失败: ' + (res.detail || '未知错误'));
+                alert('清除失败: ' + (res.detail || res.error || '未知错误'));
             }
         } catch (err) {
             alert('清除失败: ' + err.message);
         }
     };
 
+    // Electron 模式的简化配置显示
+    if (isElectron()) {
+        return (
+            <div className="config-section">
+                <h3
+                    className={`collapsible ${collapsed ? 'collapsed' : ''}`}
+                    onClick={() => setCollapsed(!collapsed)}
+                >
+                    Claude 配置
+                </h3>
+                <div className={`config-panel ${collapsed ? 'collapsed' : ''}`}>
+                    <div className="config-form" style={{ marginTop: '10px' }}>
+                        <div className="form-group">
+                            <label>API Key</label>
+                            <input
+                                type="password"
+                                placeholder="sk-ant-..."
+                                value={apiKey}
+                                onChange={(e) => setApiKey(e.target.value)}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label>Base URL (可选)</label>
+                            <input
+                                type="text"
+                                placeholder="https://api.anthropic.com"
+                                value={baseUrl}
+                                onChange={(e) => setBaseUrl(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <div className="config-actions">
+                        <button className="btn btn-primary btn-sm" onClick={handleSave}>保存</button>
+                        <button
+                            className="btn btn-danger btn-sm"
+                            onClick={handleClear}
+                            disabled={!config?.hasApiKey}
+                        >
+                            清除
+                        </button>
+                    </div>
+                    {config && (
+                        <div className="config-sources">
+                            <div className="config-sources-title">当前配置</div>
+                            <div className="config-source active">
+                                <span className="config-source-icon">●</span>
+                                <span className="config-source-label">模型</span>
+                                <span className="config-source-value">{config.model || '未配置'}</span>
+                            </div>
+                            <div className={`config-source ${config.hasApiKey ? 'active' : ''}`}>
+                                <span className="config-source-icon">{config.hasApiKey ? '●' : '○'}</span>
+                                <span className="config-source-label">API Key</span>
+                                <span className="config-source-value">
+                                    {config.apiKeyPreview || '未配置'}
+                                </span>
+                            </div>
+                            {config.baseUrl && (
+                                <div className="config-source active">
+                                    <span className="config-source-icon">●</span>
+                                    <span className="config-source-label">Base URL</span>
+                                    <span className="config-source-value">{config.baseUrl}</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    // Web 模式的多级配置显示
     const sources = [
         { key: 'web', label: 'Web 配置', data: config?.web },
         { key: 'dotenv', label: '项目 .env', data: config?.dotenv },
@@ -70,7 +142,7 @@ const ConfigPanel = () => {
     ];
 
     return (
-        <div class="config-section">
+        <div className="config-section">
             <h3
                 className={`collapsible ${collapsed ? 'collapsed' : ''}`}
                 id="configHeader"
@@ -123,11 +195,7 @@ const ConfigPanel = () => {
                             const isActive = config.active_source === source.key;
                             const hasKey = source.data.has_api_key;
                             const statusClass = isActive ? 'active' : (hasKey ? 'available' : '');
-                            // Note: CSS uses .config-source.active etc.
-                            // and children elements.
 
-                            // Replicating html construction:
-                            // <div class="config-source ${statusClass}">
                             return (
                                 <div key={source.key} className={`config-source ${statusClass}`}>
                                     <span className="config-source-icon">

@@ -40,8 +40,17 @@ function App() {
   }, []);
 
   const toggleTerminal = () => {
-    setShowTerminal(!showTerminal);
-    if (!showTerminal) setIsTerminalMaximized(false);
+    const newShowTerminal = !showTerminal;
+    setShowTerminal(newShowTerminal);
+    // 关闭终端时，也要重置最大化状态
+    if (!newShowTerminal) {
+      setIsTerminalMaximized(false);
+    }
+  };
+
+  const closeTerminal = () => {
+    setShowTerminal(false);
+    setIsTerminalMaximized(false);
   };
 
   const toggleMaximize = () => {
@@ -81,7 +90,7 @@ function App() {
         <TerminalPanel
           selectedServerId={selectedServerId}
           isVertical={true}
-          onClose={() => setShowTerminal(false)}
+          onClose={closeTerminal}
           onMaximize={toggleMaximize}
           isMaximized={isTerminalMaximized}
         />
