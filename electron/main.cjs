@@ -7,9 +7,9 @@ const { sshService } = require('./services/ssh.cjs')
 function loadEnvFile() {
   // 尝试多个可能的 .env 路径
   const possiblePaths = [
-    path.join(__dirname, '../../.env'),           // 开发模式：new-ui/../.env
-    path.join(__dirname, '../../../.env'),        // 打包后可能的路径
-    path.join(app.getAppPath(), '../.env'),       // 相对于 app 路径
+    path.join(__dirname, '../.env'),              // 开发模式：electron/../.env (项目根目录)
+    path.join(__dirname, '../../.env'),           // 打包后可能的路径
+    path.join(app.getAppPath(), '.env'),          // 相对于 app 路径
     path.join(process.cwd(), '.env'),             // 当前工作目录
   ]
 
