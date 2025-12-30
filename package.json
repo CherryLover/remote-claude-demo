@@ -45,6 +45,7 @@
   "build": {
     "appId": "com.cherrylover.remote-claude",
     "productName": "Remote Claude",
+    "publish": null,
     "directories": {
       "output": "release"
     },
