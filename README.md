@@ -1,65 +1,16 @@
-# Remote Claude Demo
+# React + Vite
 
-基于 Claude Agent SDK 的远程服务器管理 Web 服务。通过自然语言与 Claude 对话，管理多台 SSH 服务器。
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## 功能特性
+Currently, two official plugins are available:
 
-- Web UI 管理多个 SSH 服务器连接
-- 通过自然语言指令执行远程命令
-- 使用 Claude Agent SDK 提供智能交互
-- 支持服务器配置持久化
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-## 技术栈
+## React Compiler
 
-- **后端**: FastAPI + Uvicorn
-- **AI**: Claude Agent SDK
-- **SSH**: Paramiko
-- **前端**: 原生 HTML/CSS/JavaScript
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-## 安装
+## Expanding the ESLint configuration
 
-1. 克隆仓库
-
-```bash
-git clone https://github.com/CherryLover/remote-claude-demo.git
-cd remote-claude-demo
-```
-
-2. 创建虚拟环境
-
-```bash
-python -m venv .venv
-source .venv/bin/activate  # Linux/macOS
-# 或 .venv\Scripts\activate  # Windows
-```
-
-3. 安装依赖
-
-```bash
-pip install -r requirements.txt
-```
-
-4. 配置环境变量
-
-```bash
-cp .env.example .env
-# 编辑 .env 文件，设置 ANTHROPIC_API_KEY
-```
-
-## 运行
-
-```bash
-python app.py
-```
-
-服务启动后访问 http://localhost:8000
-
-## 使用方法
-
-1. 在左侧面板添加 SSH 服务器配置
-2. 点击连接按钮建立 SSH 连接
-3. 在右侧对话框与 Claude 交互，执行远程命令
-
-## 许可证
-
-MIT
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
