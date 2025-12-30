@@ -3,7 +3,10 @@
   "private": true,
   "version": "1.0.0",
   "description": "Remote server management with Claude AI",
-  "author": "CherryLover",
+  "author": {
+    "name": "CherryLover",
+    "email": "jiangjiwei0322@outlook.com"
+  },
   "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
